@@ -1,24 +1,11 @@
 from database import db_connection
-
+import sqlite3
 class BookingSystem:
     @staticmethod
-    def create_reservation(user_id, tour_id, cabin_type, selected_services):
+    def create_reservation(user_id, tour_id, cabin_type, selected_services,total_price):
         with db_connection() as conn:
             try:
-                #Считаем общую цену
                 cursor = conn.cursor()
-                cursor.execute('SELECT base_price FROM tours WHERE id = ?', (tour_id,))
-                base_price = cursor.fetchone()[0]
-                
-                #Пример введения доп услуг, влияющих на цену (пока неработает)
-                service_prices = {
-                    'spa': 50,
-                    'excursion': 100,
-                    'premium_dining': 75
-                }
-                service_cost = sum(service_prices[service] for service in selected_services)
-                
-                total_price = base_price + service_cost
                 
                 #Создаем бронь
                 cursor.execute('''

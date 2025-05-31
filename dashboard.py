@@ -3,8 +3,10 @@ from PyQt6.QtWidgets import (
     QTableWidget, QTableWidgetItem, QPushButton, 
     QLabel, QLineEdit, QComboBox, QSpinBox, 
     QDoubleSpinBox, QTextEdit, QMessageBox, 
-    QHeaderView, QDateEdit
+    QHeaderView, QDateEdit, 
+    QDialog, QDialogButtonBox, QCheckBox, QFormLayout
 )
+import sqlite3
 from PyQt6.QtCore import Qt, QDate
 from database import db_connection
 from booking import BookingSystem
@@ -17,6 +19,8 @@ class Dashboard(QWidget):
         super().__init__()
         self.user_role = user_role
         self.user_id = user_id
+        self.cart = []
+        self.is_discount = False
         self.initUI()
 
     def initUI(self):
@@ -32,12 +36,16 @@ class Dashboard(QWidget):
 
         #Пользовательские вкладки, зависимые от роли
         if self.user_role == 'user':
-            self.tabs.addTab(self.create_bookings_tab(), "Мои бронирования")
+            #self.tabs.addTab(self.create_bookings_tab(), "Мои бронирования")
             self.tabs.addTab(self.create_reviews_tab(), "Мои отзывы")
+            self.tabs.addTab(self.create_cart_tab(), "Корзина")
         elif self.user_role == 'manager':
             self.tabs.addTab(self.create_management_tab(), "Организация туров")
         elif self.user_role == 'admin':
             self.tabs.addTab(self.create_user_management_tab(), "Управление пользователями")
+
+        if self.user_role in ['user', 'manager', 'admin']:
+            self.tabs.addTab(self.create_special_offers_tab(), "Спецпредложения")
 
         layout.addWidget(self.tabs)
         self.setLayout(layout)
@@ -56,6 +64,10 @@ class Dashboard(QWidget):
         self.tours_table.setHorizontalHeaderLabels(
             ['Name', 'Destination', 'Departure', 'Duration', 'Price', 'Cabins']
         )
+        self.tours_table.setColumnCount(7)  # Add Actions column
+        self.tours_table.setHorizontalHeaderLabels(
+            ['Name', 'Destination', 'Departure', 'Duration', 'Price', 'Cabins', 'Actions']
+        )
         
         #Заполняем вкладку данными
         self.load_tours_data()
@@ -68,15 +80,115 @@ class Dashboard(QWidget):
         with db_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('''
-                SELECT name, destination, departure_date, duration, base_price, available_cabins
-                FROM tours
-            ''')
+                SELECT id, name, destination, departure_date, duration, base_price, available_cabins FROM tours''')
             tours = cursor.fetchall()
-            
+        
             self.tours_table.setRowCount(len(tours))
             for row_idx, row_data in enumerate(tours):
-                for col_idx, value in enumerate(row_data):
+                tour_id = row_data[0]
+                for col_idx, value in enumerate(row_data[1:]):  # Skip ID
                     self.tours_table.setItem(row_idx, col_idx, QTableWidgetItem(str(value)))
+            
+                #Кнопка брони
+                if self.user_role == 'user':
+                    btn_book = QPushButton("Забронировать")
+                    btn_book.clicked.connect(lambda _, tid=tour_id: self.book_tour_disable_discount(tid))
+                    self.tours_table.setCellWidget(row_idx, 6, btn_book)
+
+    def book_tour_disable_discount(self,tid):
+        self.is_discount = False
+        self.book_tour(tid)
+
+    def book_tour(self, tour_id):
+        self.selected_tour_id = tour_id
+        self.show_booking_dialog()
+
+    def show_booking_dialog(self):
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Бронирование тура")
+        layout = QVBoxLayout()
+
+    
+        #Выбраем уровень комфорта
+        layout.addWidget(QLabel("Уровень комфорта:"))
+        self.cmb_comfort = QComboBox()
+        self.cmb_comfort.addItems(["Standard", "Premium", "Luxury"])
+        layout.addWidget(self.cmb_comfort)
+    
+        #Доп услуги
+        layout.addWidget(QLabel("Дополнительные услуги:"))
+        self.chk_services = []
+        services = ["SPA", "Экскурсии", "Премиум питание"]
+        for service in services:
+            chk = QCheckBox(service)
+            self.chk_services.append(chk)
+            layout.addWidget(chk)
+    
+        #Считаем цену 
+        self.lbl_price = QLabel("Итоговая цена: $0.00")
+        layout.addWidget(self.lbl_price)
+        self.calculate_price()
+    
+        #Подвязываем доп параметры к финальной цене
+        self.cmb_comfort.currentIndexChanged.connect(self.calculate_price)
+        for chk in self.chk_services:
+            chk.stateChanged.connect(self.calculate_price)
+    
+        btn_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        btn_box.accepted.connect(lambda: self.confirm_booking(dialog))
+        btn_box.rejected.connect(dialog.reject)
+        layout.addWidget(btn_box)
+    
+        dialog.setLayout(layout)
+        dialog.exec()
+
+    def calculate_price(self):
+        with db_connection() as conn:
+            cursor = conn.cursor()
+            if self.is_discount:
+                cursor.execute('SELECT base_price FROM tours WHERE id = ?', (self.selected_tour_id,))
+                price = cursor.fetchone()[0]
+                cursor.execute('SELECT discount_percent FROM special_offers WHERE id = ?', (self.selected_tour_id,))
+                discount = cursor.fetchone()[0]
+                base_price = price * (1 - discount/100)
+            else:
+                cursor.execute('SELECT base_price FROM tours WHERE id = ?', (self.selected_tour_id,))
+                base_price = cursor.fetchone()[0]
+    
+        #Тут множители цены в зависимости от уровня билета
+        comfort_multiplier = {
+            "Standard": 1.0,
+            "Premium": 1.3,
+            "Luxury": 1.8
+        }
+        multiplier = comfort_multiplier[self.cmb_comfort.currentText()]
+        price = base_price * multiplier
+    
+        #Цена услуг
+        service_prices = {"SPA": 50, "Экскурсии": 100, "Премиум питание": 75}
+        for chk in self.chk_services:
+            if chk.isChecked():
+                price += service_prices[chk.text()]
+    
+        self.lbl_price.setText(f"Итоговая цена: ${price:.2f}")
+
+    def confirm_booking(self, dialog):
+        selected_services = [chk.text() for chk in self.chk_services if chk.isChecked()]
+        cabin_type = self.cmb_comfort.currentText()
+    
+        success = BookingSystem.create_reservation(
+            self.user_id,
+            self.selected_tour_id,
+            cabin_type,
+            selected_services
+        )
+    
+        if success:
+            QMessageBox.information(self, "Успех", "Тур успешно забронирован!")
+            dialog.accept()
+            self.load_bookings_data()  # Refresh bookings tab
+        else:
+            QMessageBox.critical(self, "Ошибка", "Не удалось забронировать тур")
 
     def create_bookings_tab(self):
         tab = QWidget()
@@ -132,7 +244,7 @@ class Dashboard(QWidget):
             with db_connection() as conn:
                 cursor = conn.cursor()
                 try:
-                    # Delete reservation and restore cabin
+                    #Удалияем бронирование и возвращаем каюту
                     cursor.execute('DELETE FROM reservations WHERE id = ?', (reservation_id,))
                     conn.commit()
                     self.load_bookings_data()
@@ -168,18 +280,18 @@ class Dashboard(QWidget):
                 JOIN tours t ON r.tour_id = t.id
                 WHERE r.user_id = ?
             ''', (self.user_id,))
-            self.cmb_tours.addItems([f"{row[0]} - {row[1]}" for row in cursor.fetchall()])
-
+            for tour_id, tour_name in cursor.fetchall():
+                self.cmb_tours.addItem(tour_name, tour_id)
         form_layout.addWidget(lbl_new)
-        form_layout.addWidget(QLabel("Tour:"))
+        form_layout.addWidget(QLabel("Тур:"))
         form_layout.addWidget(self.cmb_tours)
-        form_layout.addWidget(QLabel("Rating (1-5):"))
+        form_layout.addWidget(QLabel("Рейтинг (1-5):"))
         form_layout.addWidget(self.spin_rating)
-        form_layout.addWidget(QLabel("Comment:"))
+        form_layout.addWidget(QLabel("Комментарий:"))
         form_layout.addWidget(self.txt_comment)
         form_layout.addWidget(btn_submit)
 
-        layout.addWidget(QLabel("My Reviews:"))
+        layout.addWidget(QLabel("Отзывы:"))
         layout.addWidget(self.reviews_table)
         layout.addLayout(form_layout)
         tab.setLayout(layout)
@@ -193,8 +305,7 @@ class Dashboard(QWidget):
                 SELECT t.name, r.rating, r.comment, r.id 
                 FROM reviews r
                 JOIN tours t ON r.tour_id = t.id
-                WHERE r.user_id = ?
-            ''', (self.user_id,))
+            ''', )
             reviews = cursor.fetchall()
 
             self.reviews_table.setRowCount(len(reviews))
@@ -210,8 +321,8 @@ class Dashboard(QWidget):
 
     def submit_review(self):
         selected = self.cmb_tours.currentText().split(" - ")
-        #селектор возвращает строку, не могу понять почему
-        tour_id = int(selected[0])
+        #селектор возвращает пустую строку, не могу понять почему
+        tour_id = self.cmb_tours.currentData()
         rating = self.spin_rating.value()
         comment = self.txt_comment.toPlainText()
 
@@ -372,7 +483,7 @@ class Dashboard(QWidget):
             btn_delete = QPushButton("Удалить")
             btn_delete.clicked.connect(lambda _, uid=uid: self.delete_user(uid))
             
-            # Disable delete for current admin
+            #Запрещаем удалиние своей записи в бд
             if uid == self.user_id and self.user_role == 'admin':
                 btn_delete.setEnabled(False)
 
@@ -399,3 +510,192 @@ class Dashboard(QWidget):
                 QMessageBox.information(self, "Успешно", "Пользователь удален")
             else:
                 QMessageBox.critical(self, "Ошибка", "Не удалось удалить пользователя")
+
+    def create_special_offers_tab(self):
+        tab = QWidget()
+        layout = QVBoxLayout()
+    
+        #Вкладка специальных предложений
+        self.offers_table = QTableWidget()
+        self.offers_table.setColumnCount(6)
+        self.offers_table.setHorizontalHeaderLabels(
+            ['Тур', 'Скидка', 'Начало', 'Конец', 'Цена со скидкой', 'Действия']
+        )
+        self.load_special_offers()
+        layout.addWidget(self.offers_table)
+    
+        #Добавляем форму для менеджеров/администраторов
+        if self.user_role in ['manager', 'admin']:
+            form_layout = QFormLayout()
+        
+            self.cmb_offer_tour = QComboBox()
+            self.spin_discount = QDoubleSpinBox()
+            self.spin_discount.setRange(1, 100)
+            self.spin_discount.setSuffix("%")
+            self.date_start = QDateEdit(QDate.currentDate())
+            self.date_end = QDateEdit(QDate.currentDate().addDays(30))
+        
+            form_layout.addRow("Тур:", self.cmb_offer_tour)
+            form_layout.addRow("Скидка:", self.spin_discount)
+            form_layout.addRow("Начало:", self.date_start)
+            form_layout.addRow("Конец:", self.date_end)
+        
+            btn_add = QPushButton("Добавить спецпредложение")
+            btn_add.clicked.connect(self.add_special_offer)
+            form_layout.addRow(btn_add)
+        
+            layout.addLayout(form_layout)
+            self.load_tours_for_offers()
+    
+        tab.setLayout(layout)
+        return tab
+
+    def load_tours_for_offers(self):
+        with db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT id, name FROM tours')
+            for tour_id, name in cursor.fetchall():
+                self.cmb_offer_tour.addItem(name, tour_id)
+
+    def load_special_offers(self):
+        with db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+            SELECT s.id, t.name, s.discount_percent, s.start_date, s.end_date, t.base_price
+            FROM special_offers s
+            JOIN tours t ON s.tour_id = t.id
+            ''')
+            offers = cursor.fetchall()
+        
+            self.offers_table.setRowCount(len(offers))
+            for row_idx, (offer_id, name, discount, start, end, price) in enumerate(offers):
+                self.offers_table.setItem(row_idx, 0, QTableWidgetItem(name))
+                self.offers_table.setItem(row_idx, 1, QTableWidgetItem(f"{discount}%"))
+                self.offers_table.setItem(row_idx, 2, QTableWidgetItem(start))
+                self.offers_table.setItem(row_idx, 3, QTableWidgetItem(end))
+            
+                #Рассчитываем цену со скидкой (можно позже использовать)
+                discounted_price = price * (1 - discount/100)
+                self.offers_table.setItem(row_idx, 4, QTableWidgetItem(f"${discounted_price:.2f}"))
+            
+                #Добавляем кнопку "Забронировать" для пользователей
+                if self.user_role == 'user':
+                    btn_book = QPushButton("Забронировать")
+                    btn_book.clicked.connect(lambda _, tid=offer_id: self.book_tour_enable_discount(tid))
+                    self.offers_table.setCellWidget(row_idx, 5, btn_book)
+                #Добавляем кнопку удаления для менеджеров/администраторов
+                elif self.user_role in ['manager', 'admin']:
+                    btn_delete = QPushButton("Удалить")
+                    btn_delete.clicked.connect(lambda _, oid=offer_id: self.delete_offer(oid))
+                    self.offers_table.setCellWidget(row_idx, 5, btn_delete)
+
+    def book_tour_enable_discount(self, tid):
+        self.is_discount = True
+        self.book_tour(tid)
+
+    def add_special_offer(self):
+        tour_id = self.cmb_offer_tour.currentData()
+        discount = self.spin_discount.value()
+        start_date = self.date_start.date().toString("yyyy-MM-dd")
+        end_date = self.date_end.date().toString("yyyy-MM-dd")
+    
+        with db_connection() as conn:
+            cursor = conn.cursor()
+            try:
+                cursor.execute('''
+                    INSERT INTO special_offers (tour_id, discount_percent, start_date, end_date)
+                    VALUES (?, ?, ?, ?)
+                ''', (tour_id, discount, start_date, end_date))
+                conn.commit()
+                QMessageBox.information(self, "Успех", "Спецпредложение добавлено!")
+                self.load_special_offers()
+            except sqlite3.Error as e:
+                QMessageBox.critical(self, "Ошибка", f"Не удалось добавить предложение: {str(e)}")
+
+    def create_cart_tab(self):
+        tab = QWidget()
+        layout = QVBoxLayout()
+    
+        self.cart_table = QTableWidget()
+        self.cart_table.setColumnCount(5)
+        self.cart_table.setHorizontalHeaderLabels(
+            ['Тур', 'Комфорт', 'Услуги', 'Цена', 'Действия']
+        )l
+        self.lbl_cart_total = QLabel("Итого: $0.00")
+
+        self.load_cart_data()
+    
+        btn_checkout = QPushButton("Оформить заказ")
+        btn_checkout.clicked.connect(self.checkout)
+    
+        layout.addWidget(self.cart_table)
+        layout.addWidget(self.lbl_cart_total)
+        layout.addWidget(btn_checkout)
+        tab.setLayout(layout)
+        return tab
+
+    def load_cart_data(self):
+        self.cart_table.setRowCount(len(self.cart))
+        total = 0
+    
+        for row_idx, item in enumerate(self.cart):
+            tour_name, comfort, services, price = item
+            total += price
+        
+            self.cart_table.setItem(row_idx, 0, QTableWidgetItem(tour_name))
+            self.cart_table.setItem(row_idx, 1, QTableWidgetItem(comfort))
+            self.cart_table.setItem(row_idx, 2, QTableWidgetItem(", ".join(services)))
+            self.cart_table.setItem(row_idx, 3, QTableWidgetItem(f"${price:.2f}"))
+        
+            # Remove button
+            btn_remove = QPushButton("Удалить")
+            btn_remove.clicked.connect(lambda _, idx=row_idx: self.remove_from_cart(idx))
+            self.cart_table.setCellWidget(row_idx, 4, btn_remove)
+    
+        self.lbl_cart_total.setText(f"Итого: ${total:.2f}")
+
+    def remove_from_cart(self, index):
+        self.cart.pop(index)
+        self.load_cart_data()
+
+    def checkout(self):
+        for item in self.cart:
+            tour_name, comfort, services, price = item
+            # Get tour ID from name
+            with db_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('SELECT id FROM tours WHERE name = ?', (tour_name,))
+                tour_id = cursor.fetchone()[0]
+        
+            BookingSystem.create_reservation(
+                self.user_id,
+                tour_id,
+                comfort,
+                services,
+                price
+            )
+    
+        self.cart = []
+        self.load_cart_data()
+        QMessageBox.information(self, "Успех", "Заказ успешно оформлен!")
+
+    #Изменяем функию book_tour для добавления в корзину
+    def confirm_booking(self, dialog):
+        selected_services = [chk.text() for chk in self.chk_services if chk.isChecked()]
+        cabin_type = self.cmb_comfort.currentText()
+    
+        #Находим имя тура
+        with db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT name FROM tours WHERE id = ?', (self.selected_tour_id,))
+            tour_name = cursor.fetchone()[0]
+    
+        #Рассчитываем финальную цену
+        price = float(self.lbl_price.text().split('$')[1])
+    
+        #Добавляем в корзину
+        self.cart.append((tour_name, cabin_type, selected_services, price))
+        self.load_cart_data()
+    
+        dialog.accept()
+        QMessageBox.information(self, "Добавлено в корзину", "Тур добавлен в корзину!")

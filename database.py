@@ -2,7 +2,7 @@ import sqlite3
 import bcrypt
 from contextlib import contextmanager
 
-DATABASE_NAME = 'C:/Users/brb/Desktop/уник/IB_export/cruise_system.db'
+DATABASE_NAME = 'C:/Users/flow/Desktop/уник/прикуп/cruise_system/Cruise_system/cruise_system.db'
 
 @contextmanager
 def db_connection():
@@ -41,6 +41,16 @@ def initialize_database():
                 comfort_level TEXT,
                 available_cabins INTEGER NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS special_offers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tour_id INTEGER NOT NULL,
+            discount_percent REAL NOT NULL,
+            start_date DATE NOT NULL,
+            end_date DATE NOT NULL,
+            FOREIGN KEY(tour_id) REFERENCES tours(id)
             )
         ''')
         
