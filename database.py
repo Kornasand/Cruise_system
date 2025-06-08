@@ -1,8 +1,10 @@
 import sqlite3
 import bcrypt
 from contextlib import contextmanager
+import os
 
-DATABASE_NAME = 'C:/Users/flow/Desktop/уник/прикуп/cruise_system/Cruise_system/cruise_system.db'
+
+DATABASE_NAME = os.path.dirname(os.path.realpath(__file__)) + '\\cruise_system.db'
 
 @contextmanager
 def db_connection():

@@ -353,13 +353,13 @@ class Dashboard(QWidget):
         tab = QWidget()
         layout = QVBoxLayout()
 
-        # Add Tour Form
         form = QWidget()
         form_layout = QVBoxLayout()
         
         self.txt_tour_name = QLineEdit()
         self.txt_tour_desc = QTextEdit()
         self.spin_price = QDoubleSpinBox()
+        self.spin_price.setMaximum(999999)
         self.spin_price.setPrefix("$")
         self.date_edit = QDateEdit()
         self.txt_destination = QLineEdit()
@@ -511,6 +511,19 @@ class Dashboard(QWidget):
             else:
                 QMessageBox.critical(self, "Ошибка", "Не удалось удалить пользователя")
 
+    def delete_special_offer(self, offer_id_inc):
+        confirm = QMessageBox.question(
+            self, "Подтвердите удаление", 
+            f"Удалить тур #{offer_id_inc}? Это действие невозможно отменить!",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+        if confirm == QMessageBox.StandardButton.Yes:
+            if BookingSystem.delete_special_offer(offer_id_inc):
+                self.load_special_offers()
+                QMessageBox.information(self, "Успешно", "Предложение удалено")
+            else:
+                QMessageBox.critical(self, "Ошибка", "Не удалось удалить предложение")
+
     def create_special_offers_tab(self):
         tab = QWidget()
         layout = QVBoxLayout()
@@ -586,7 +599,7 @@ class Dashboard(QWidget):
                 #Добавляем кнопку удаления для менеджеров/администраторов
                 elif self.user_role in ['manager', 'admin']:
                     btn_delete = QPushButton("Удалить")
-                    btn_delete.clicked.connect(lambda _, oid=offer_id: self.delete_offer(oid))
+                    btn_delete.clicked.connect(lambda _, oid=offer_id: self.delete_special_offer(oid))
                     self.offers_table.setCellWidget(row_idx, 5, btn_delete)
 
     def book_tour_enable_discount(self, tid):
@@ -620,7 +633,7 @@ class Dashboard(QWidget):
         self.cart_table.setColumnCount(5)
         self.cart_table.setHorizontalHeaderLabels(
             ['Тур', 'Комфорт', 'Услуги', 'Цена', 'Действия']
-        )l
+        )
         self.lbl_cart_total = QLabel("Итого: $0.00")
 
         self.load_cart_data()

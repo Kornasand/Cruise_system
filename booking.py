@@ -32,3 +32,13 @@ class BookingSystem:
             except sqlite3.Error as e:
                 print(f"Booking error: {e}")
                 return False
+
+    def delete_special_offer(tour_id_inc):
+        with db_connection() as conn:
+            cursor = conn.cursor()
+            try:
+                cursor.execute('DELETE FROM special_offers WHERE id = ?',(tour_id_inc,))
+                conn.commit()
+                return cursor.rowcount > 0
+            except sqlite3.IntegrityError:
+                return False  #Ключ не нашелся
