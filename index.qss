@@ -1,0 +1,216 @@
+/* Base Application Styling */
+QWidget {
+    background-color: #f0f8ff; /* Lighter, softer blue background */
+    font-family: 'Segoe UI', 'Arial', sans-serif;
+    color: #333;
+}
+
+/* Tab Styling */
+QTabWidget {
+    background: transparent;
+}
+
+QTabWidget::pane {
+    border: none;
+    margin-top: 10px;
+    background: transparent;
+}
+
+QTabBar::tab {
+    background: #e6f2ff;
+    color: #4a6fa5;
+    padding: 10px 20px;
+    margin-right: 4px;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+    font-weight: 600;
+    border: 1px solid #c2d8f0;
+    font-size: 13px;
+}
+
+QTabBar::tab:selected {
+    background: #d1e7ff;
+    color: #0d6efd;
+    border-bottom: 2px solid #0d6efd;
+}
+
+QTabBar::tab:hover {
+    background: #d1e7ff;
+}
+
+/* Table Styling - Soft Corners */
+QTableWidget {
+    background: white;
+    border-radius: 16px;
+    border: 1px solid #d0e3ff;
+    padding: 8px;
+    gridline-color: #e0eefd;
+    alternate-background-color: #f8fbff;
+    font-size: 13px;
+}
+
+QTableWidget QTableCornerButton::section {
+    border-top-left-radius: 14px;
+    background: #0d6efd;
+}
+
+QHeaderView::section {
+    background-color: #0d6efd;
+    color: white;
+    padding: 10px;
+    border: none;
+    font-weight: 600;
+    font-size: 13px;
+}
+
+QHeaderView::section:first {
+    border-top-left-radius: 14px;
+}
+
+QHeaderView::section:last {
+    border-top-right-radius: 14px;
+}
+
+/* Button Styling */
+QPushButton {
+    background-color: #0d6efd;
+    color: white;
+    font-weight: 600;
+    border-radius: 12px;
+    border: none;
+    padding: 8px 16px;
+    min-height: 32px;
+    font-size: 13px;
+    transition: all 0.2s;
+}
+
+QPushButton:hover {
+    background-color: #0b5ed7;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+QPushButton:pressed {
+    background-color: #0a58ca;
+    transform: translateY(0);
+}
+
+QPushButton:disabled {
+    background-color: #a0c4ff;
+}
+
+QTableWidget QPushButton {
+    min-width: 120px; /* Allow flexible width */
+    font-size: 13px; /* Slightly smaller for table cells */
+}
+
+/* Label Styling */
+QLabel {
+    color: #4a5568;
+    font-weight: 500;
+}
+
+QLabel#heading {
+    color: #1a365d;
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+QLabel#subheading {
+    color: #4a5568;
+    font-size: 13px;
+    font-weight: 400;
+    margin-bottom: 12px;
+}
+
+/* Form Elements */
+QLineEdit, QTextEdit, QComboBox, QSpinBox, 
+QDoubleSpinBox, QDateEdit, QTextEdit {
+    background-color: white;
+    border-radius: 12px;
+    border: 1px solid #cbd5e0;
+    padding: 8px 16px;
+    min-height: 36px;
+    font-size: 14px;
+    selection-background-color: #d0e3ff;
+}
+
+QLineEdit:focus, QTextEdit:focus, QComboBox:focus,
+QSpinBox:focus, QDoubleSpinBox:focus, QDateEdit:focus {
+    border: 1px solid #0d6efd;
+    box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.2);
+}
+
+QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 30px;
+    border-left: 1px solid #cbd5e0;
+    border-top-right-radius: 11px;
+    border-bottom-right-radius: 11px;
+}
+
+QComboBox QAbstractItemView {
+    border-radius: 12px;
+    padding: 8px;
+    background: white;
+    border: 1px solid #d0e3ff;
+}
+
+/* Checkboxes */
+QCheckBox {
+    spacing: 8px;
+    color: #4a5568;
+    font-size: 14px;
+}
+
+QCheckBox::indicator {
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    border: 1px solid #cbd5e0;
+}
+
+QCheckBox::indicator:checked {
+    background-color: #0d6efd;
+    image: url(:/icons/check.svg);
+    border: none;
+}
+
+/* Dialog Styling */
+QDialog {
+    background-color: #f8fbff;
+    border-radius: 16px;
+    border: 1px solid #d0e3ff;
+    padding: 20px;
+}
+
+QDialogButtonBox {
+    button-layout: 2; /* Mac style buttons */
+}
+
+/* Special Elements */
+QTextEdit {
+    padding: 12px;
+    border-radius: 12px;
+    font-size: 14px;
+}
+
+QSpinBox::up-button, QSpinBox::down-button,
+QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {
+    subcontrol-origin: border;
+    subcontrol-position: right;
+    width: 24px;
+    border-left: 1px solid #cbd5e0;
+}
+
+/* Cart Total Label */
+#cart_total {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1a365d;
+    padding: 12px;
+    background: #e6f2ff;
+    border-radius: 12px;
+}

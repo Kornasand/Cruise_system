@@ -2,6 +2,8 @@ import sys
 from PyQt6.QtWidgets import QApplication, QMainWindow, QMessageBox
 from auth import AuthSystem
 from dashboard import Dashboard
+import os 
+from pathlib import Path
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -71,6 +73,7 @@ if __name__ == "__main__":
     initialize_database()
 
     app = QApplication(sys.argv)
+    app.setStyleSheet(Path(os.path.dirname(os.path.realpath(__file__)) + '\\index.qss').read_text())
     window = MainWindow()
     window.show()
     sys.exit(app.exec())

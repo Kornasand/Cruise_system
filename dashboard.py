@@ -60,6 +60,8 @@ class Dashboard(QWidget):
         
         #Вкладка для всех туров
         self.tours_table = QTableWidget()
+        self.tours_table.verticalHeader().setDefaultSectionSize(50)
+        self.tours_table.horizontalHeader().setDefaultSectionSize(100)
         self.tours_table.setColumnCount(6)
         self.tours_table.setHorizontalHeaderLabels(
             ['Name', 'Destination', 'Departure', 'Duration', 'Price', 'Cabins']
@@ -196,6 +198,8 @@ class Dashboard(QWidget):
 
         #Список бронирований
         self.bookings_table = QTableWidget()
+        self.bookings_table.verticalHeader().setDefaultSectionSize(50)
+        self.bookings_table.horizontalHeader().setDefaultSectionSize(100)
         self.bookings_table.setColumnCount(6)
         self.bookings_table.setHorizontalHeaderLabels(
             ['Tour', 'Departure', 'Cabin', 'Services', 'Total Price', 'Actions']
@@ -258,6 +262,8 @@ class Dashboard(QWidget):
 
         #Список обзоров
         self.reviews_table = QTableWidget()
+        self.reviews_table.verticalHeader().setDefaultSectionSize(50)
+        self.reviews_table.horizontalHeader().setDefaultSectionSize(100)
         self.reviews_table.setColumnCount(4)
         self.reviews_table.setHorizontalHeaderLabels(['Tour', 'Rating', 'Comment', 'Actions'])
         
@@ -392,6 +398,8 @@ class Dashboard(QWidget):
 
         #Список туров
         self.tours_manage_table = QTableWidget()
+        self.tours_manage_table.verticalHeader().setDefaultSectionSize(50)
+        self.tours_manage_table.horizontalHeader().setDefaultSectionSize(100)
         self.tours_manage_table.setColumnCount(8)
         self.tours_manage_table.setHorizontalHeaderLabels(
             ['ID', 'Name', 'Price', 'Departure', 'Destination', 'Cabins', 'Comfort', 'Actions']
@@ -451,7 +459,7 @@ class Dashboard(QWidget):
 
         self.users_table = QTableWidget()
         self.users_table.verticalHeader().setDefaultSectionSize(50)
-        self.users_table.horizontalHeader().setDefaultSectionSize(200)
+        self.users_table.horizontalHeader().setDefaultSectionSize(100)
         self.users_table.setColumnCount(5)
         self.users_table.setHorizontalHeaderLabels(
             ['ID', 'Username', 'Role', 'Email', 'Actions']
@@ -530,6 +538,8 @@ class Dashboard(QWidget):
     
         #Вкладка специальных предложений
         self.offers_table = QTableWidget()
+        self.offers_table.verticalHeader().setDefaultSectionSize(50)
+        self.offers_table.horizontalHeader().setDefaultSectionSize(100)
         self.offers_table.setColumnCount(6)
         self.offers_table.setHorizontalHeaderLabels(
             ['Тур', 'Скидка', 'Начало', 'Конец', 'Цена со скидкой', 'Действия']
@@ -630,6 +640,8 @@ class Dashboard(QWidget):
         layout = QVBoxLayout()
     
         self.cart_table = QTableWidget()
+        self.cart_table.verticalHeader().setDefaultSectionSize(50)
+        self.cart_table.horizontalHeader().setDefaultSectionSize(100)
         self.cart_table.setColumnCount(5)
         self.cart_table.setHorizontalHeaderLabels(
             ['Тур', 'Комфорт', 'Услуги', 'Цена', 'Действия']
