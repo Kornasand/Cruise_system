@@ -25,6 +25,17 @@ class TourManager:
                 return False
 
     @staticmethod
+    def delete_tour(tour_id):
+        with db_connection() as conn:
+            cursor = conn.cursor()
+            try:
+                cursor.execute('DELETE FROM tours WHERE id = ?', (tour_id,))
+                conn.commit()
+                return cursor.rowcount > 0
+            except sqlite3.IntegrityError:
+                return False  #Ключ не нашелся
+
+    @staticmethod
     def search_tours(filters):
         query = '''
             SELECT * FROM tours

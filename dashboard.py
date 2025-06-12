@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import (
     QLabel, QLineEdit, QComboBox, QSpinBox, 
     QDoubleSpinBox, QTextEdit, QMessageBox, 
     QHeaderView, QDateEdit, 
-    QDialog, QDialogButtonBox, QCheckBox, QFormLayout
+    QDialog, QDialogButtonBox, QCheckBox, QFormLayout,QScrollArea
 )
 import sqlite3
 from PyQt6.QtCore import Qt, QDate
@@ -25,10 +25,15 @@ class Dashboard(QWidget):
 
     def initUI(self):
         self.setWindowTitle('Cruise System Dashboard')
-        self.setGeometry(100, 100, 800, 600)
+        self.setGeometry(100, 100, 1280, 1024)
+
+
+        #self.setVerticalScrollBar(scroll_bar)
 
         layout = QVBoxLayout()
         self.tabs = QTabWidget()
+
+
         
         #Общие вкладки
         self.tabs.addTab(self.create_profile_tab(), "Профиль")
@@ -49,6 +54,8 @@ class Dashboard(QWidget):
 
         layout.addWidget(self.tabs)
         self.setLayout(layout)
+
+
 
     def create_profile_tab(self):
         #Управления профилями (возможно не нужно, но пока пусть будет)
@@ -362,6 +369,7 @@ class Dashboard(QWidget):
         form = QWidget()
         form_layout = QVBoxLayout()
         
+
         self.txt_tour_name = QLineEdit()
         self.txt_tour_desc = QTextEdit()
         self.spin_price = QDoubleSpinBox()
@@ -441,14 +449,11 @@ class Dashboard(QWidget):
                     self.tours_manage_table.setItem(row_idx, col_idx, QTableWidgetItem(str(value)))
                 
                 #Добавляем кнопки редактировать/удалить
-                btn_edit = QPushButton("Редактировать")
                 btn_delete = QPushButton("Удалить")
-                btn_edit.clicked.connect(lambda _, rid=row[0]: self.edit_tour(rid))
                 btn_delete.clicked.connect(lambda _, rid=row[0]: self.delete_tour(rid))
                 
                 btn_layout = QWidget()
                 btn_layout.setLayout(QHBoxLayout())
-                btn_layout.layout().addWidget(btn_edit)
                 btn_layout.layout().addWidget(btn_delete)
                 
                 self.tours_manage_table.setCellWidget(row_idx, 7, btn_layout)
@@ -531,6 +536,19 @@ class Dashboard(QWidget):
                 QMessageBox.information(self, "Успешно", "Предложение удалено")
             else:
                 QMessageBox.critical(self, "Ошибка", "Не удалось удалить предложение")
+
+    def delete_tour(self, tour_id):
+        confirm = QMessageBox.question(
+            self, "Подтвердите удаление", 
+            f"Удалить тур #{tour_id}? Это действие невозможно отменить!",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+        if confirm == QMessageBox.StandardButton.Yes:
+            if TourManager.delete_tour(tour_id):
+                self.load_manage_tours_data()
+                QMessageBox.information(self, "Успешно", "Тур удален")
+            else:
+                QMessageBox.critical(self, "Ошибка", "Не удалось удалить тур")
 
     def create_special_offers_tab(self):
         tab = QWidget()

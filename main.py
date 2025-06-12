@@ -65,7 +65,7 @@ class MainWindow(QMainWindow):
         self.dashboard = Dashboard(user_data['role'], user_data['id'])
         self.setCentralWidget(self.dashboard)
         self.setWindowTitle(f"Круизная система - {user_data['role'].capitalize()} Приборная панель")
-        self.resize(1024, 768)
+        self.resize(1280, 1024)
 
 if __name__ == "__main__":
     #Инициализация базы данных, можно потом убрать
