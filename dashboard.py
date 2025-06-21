@@ -7,9 +7,17 @@ from PyQt6.QtWidgets import (
     QDialog, QDialogButtonBox, QCheckBox, QFormLayout,QScrollArea
 )
 import sqlite3
+import matplotlib
+matplotlib.use('Qt5Agg')  # Use the Qt backend
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
+import matplotlib.dates as mdates
+import numpy as np
 from PyQt6.QtCore import Qt, QDate
+from PyQt6.QtGui import QPainter, QColor
 from database import db_connection
 from booking import BookingSystem
+from datetime import datetime as py_datetime
 from reviews import ReviewSystem
 from tour_manager import TourManager
 from user_manager import UserManager
@@ -51,6 +59,8 @@ class Dashboard(QWidget):
 
         if self.user_role in ['user', 'manager', 'admin']:
             self.tabs.addTab(self.create_special_offers_tab(), "Спецпредложения")
+        if self.user_role in ['manager', 'admin']:
+            self.tabs.addTab(self.create_analytics_tab(), "Аналитика")
 
         layout.addWidget(self.tabs)
         self.setLayout(layout)
@@ -742,3 +752,166 @@ class Dashboard(QWidget):
     
         dialog.accept()
         QMessageBox.information(self, "Добавлено в корзину", "Тур добавлен в корзину!")
+
+    def create_analytics_tab(self):
+        tab = QWidget()
+        layout = QVBoxLayout()
+        
+        # Date range selection
+        date_layout = QHBoxLayout()
+        date_layout.addWidget(QLabel("С:"))
+        self.start_date_edit = QDateEdit(QDate.currentDate().addMonths(-1))
+        date_layout.addWidget(self.start_date_edit)
+        
+        date_layout.addWidget(QLabel("По:"))
+        self.end_date_edit = QDateEdit(QDate.currentDate())
+        date_layout.addWidget(self.end_date_edit)
+        
+        btn_update = QPushButton("Обновить")
+        btn_update.clicked.connect(self.update_analytics)
+        date_layout.addWidget(btn_update)
+        
+        layout.addLayout(date_layout)
+        
+        # Tab widget for different charts
+        self.analytics_tabs = QTabWidget()
+        
+        # Create tabs and layouts
+        self.tab1 = QWidget()
+        self.tab1_layout = QVBoxLayout(self.tab1)
+        
+        self.tab2 = QWidget()
+        self.tab2_layout = QVBoxLayout(self.tab2)
+        
+        self.tab3 = QWidget()
+        self.tab3_layout = QVBoxLayout(self.tab3)
+        
+        self.analytics_tabs.addTab(self.tab1, "Популярность туров")
+        self.analytics_tabs.addTab(self.tab2, "Спрос по датам")
+        self.analytics_tabs.addTab(self.tab3, "Распределение по типам")
+        
+        layout.addWidget(self.analytics_tabs)
+        tab.setLayout(layout)
+        
+        # Create initial figures
+        self.create_figures()
+        
+        # Load initial data
+        self.update_analytics()
+        
+        return tab
+    
+    def create_figures(self):
+        # Create figure for tour popularity
+        self.fig1 = Figure(figsize=(8, 4))
+        self.canvas1 = FigureCanvas(self.fig1)
+        self.tab1_layout.addWidget(self.canvas1)
+        
+        # Create figure for date demand
+        self.fig2 = Figure(figsize=(8, 4))
+        self.canvas2 = FigureCanvas(self.fig2)
+        self.tab2_layout.addWidget(self.canvas2)
+        
+        # Create figure for comfort distribution
+        self.fig3 = Figure(figsize=(8, 4))
+        self.canvas3 = FigureCanvas(self.fig3)
+        self.tab3_layout.addWidget(self.canvas3)
+    
+    def update_analytics(self):
+        start_date = self.start_date_edit.date().toString("yyyy-MM-dd")
+        end_date = self.end_date_edit.date().toString("yyyy-MM-dd")
+        
+        # Update all charts
+        self.show_tour_popularity(start_date, end_date)
+        self.show_date_demand(start_date, end_date)
+        self.show_comfort_distribution(start_date, end_date)
+    
+    def show_tour_popularity(self, start_date, end_date):
+        with db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT t.name, COUNT(r.id) as bookings
+                FROM reservations r
+                JOIN tours t ON r.tour_id = t.id
+                WHERE r.booking_date BETWEEN ? AND ?
+                GROUP BY t.name
+                ORDER BY bookings DESC
+                LIMIT 10
+            ''', (start_date, end_date))
+            results = cursor.fetchall()
+        
+        self.fig1.clear()
+        ax = self.fig1.add_subplot(111)
+        
+        if results:
+            names = [row[0] for row in results]
+            bookings = [row[1] for row in results]
+            
+            # Create bar chart
+            y_pos = np.arange(len(names))
+            ax.barh(y_pos, bookings, align='center', color='royalblue')
+            ax.set_yticks(y_pos)
+            ax.set_yticklabels(names)
+            ax.invert_yaxis()  # Top tour at the top
+            ax.set_xlabel('Количество бронирований')
+            ax.set_title('Топ 10 популярных туров')
+        
+        self.canvas1.draw()
+    
+    def show_date_demand(self, start_date, end_date):
+        with db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT booking_date, COUNT(id) as bookings
+                FROM reservations
+                WHERE booking_date BETWEEN ? AND ?
+                GROUP BY booking_date
+                ORDER BY booking_date
+            ''', (start_date, end_date))
+            results = cursor.fetchall()
+        
+        self.fig2.clear()
+        ax = self.fig2.add_subplot(111)
+        
+        if results:
+            dates = [py_datetime.strptime(row[0], '%Y-%m-%d') for row in results]
+            bookings = [row[1] for row in results]
+            
+            # Create line chart
+            ax.plot(dates, bookings, 'o-', color='green')
+            ax.set_xlabel('Дата бронирования')
+            ax.set_ylabel('Количество бронирований')
+            ax.set_title('Спрос по датам бронирования')
+            
+            # Format date labels
+            ax.xaxis.set_major_formatter(mdates.DateFormatter('%d/%m'))
+            self.fig2.autofmt_xdate()  # Rotate dates
+        
+        self.canvas2.draw()
+    
+    def show_comfort_distribution(self, start_date, end_date):
+        with db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT cabin_type, COUNT(id) as bookings
+                FROM reservations
+                WHERE booking_date BETWEEN ? AND ?
+                GROUP BY cabin_type
+            ''', (start_date, end_date))
+            results = cursor.fetchall()
+        
+        self.fig3.clear()
+        ax = self.fig3.add_subplot(111)
+        
+        if results:
+            types = [row[0] for row in results]
+            bookings = [row[1] for row in results]
+            
+            # Create pie chart
+            colors = ['gold', 'yellowgreen', 'lightcoral']
+            ax.pie(bookings, labels=types, autopct='%1.1f%%',
+                   colors=colors, startangle=90)
+            ax.axis('equal')  # Equal aspect ratio ensures pie is circular
+            ax.set_title('Распределение по классам кают')
+        
+        self.canvas3.draw()

@@ -26,6 +26,18 @@ class BookingSystem:
                     SET available_cabins = available_cabins - 1
                     WHERE id = ?
                 ''', (tour_id,))
+
+                cursor.execute('''
+                    INSERT INTO reservations (
+                        user_id, tour_id, cabin_type, services, total_price, booking_date
+                    ) VALUES (?, ?, ?, ?, ?, DATE('now'))
+                ''', (
+                    user_id,
+                    tour_id,
+                    cabin_type,
+                    ','.join(selected_services),
+                    total_price
+                ))
                 
                 conn.commit()
                 return True
