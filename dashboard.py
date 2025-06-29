@@ -81,11 +81,11 @@ class Dashboard(QWidget):
         self.tours_table.horizontalHeader().setDefaultSectionSize(100)
         self.tours_table.setColumnCount(6)
         self.tours_table.setHorizontalHeaderLabels(
-            ['Name', 'Destination', 'Departure', 'Duration', 'Price', 'Cabins']
+            ['Имя', 'Место назначения', 'Отбытие', 'Длительность', 'Цена', 'Каюты']
         )
         self.tours_table.setColumnCount(7)  # Add Actions column
         self.tours_table.setHorizontalHeaderLabels(
-            ['Name', 'Destination', 'Departure', 'Duration', 'Price', 'Cabins', 'Actions']
+            ['Имя', 'Место назначения', 'Отбытие', 'Длительность', 'Цена', 'Каюты', 'Действия']
         )
         
         #Заполняем вкладку данными
@@ -165,7 +165,8 @@ class Dashboard(QWidget):
         with db_connection() as conn:
             cursor = conn.cursor()
             if self.is_discount:
-                cursor.execute('SELECT base_price FROM tours WHERE id = ?', (self.selected_tour_id,))
+                cursor.execute('SELECT base_price FROM tours WHERE id = (SELECT tour_id FROM special_offers WHERE id = ?)',(self.selected_tour_id,))
+                print(self.selected_tour_id)
                 price = cursor.fetchone()[0]
                 cursor.execute('SELECT discount_percent FROM special_offers WHERE id = ?', (self.selected_tour_id,))
                 discount = cursor.fetchone()[0]
@@ -282,7 +283,7 @@ class Dashboard(QWidget):
         self.reviews_table.verticalHeader().setDefaultSectionSize(50)
         self.reviews_table.horizontalHeader().setDefaultSectionSize(100)
         self.reviews_table.setColumnCount(4)
-        self.reviews_table.setHorizontalHeaderLabels(['Tour', 'Rating', 'Comment', 'Actions'])
+        self.reviews_table.setHorizontalHeaderLabels(['Тур', 'Рейтинг', 'Комментарий', 'Действия'])
         
         #Форма отзыва
         form_layout = QVBoxLayout()
@@ -397,14 +398,14 @@ class Dashboard(QWidget):
         btn_add.clicked.connect(self.add_tour)
 
         inputs = [
-            ("Name:", self.txt_tour_name),
-            ("Description:", self.txt_tour_desc),
-            ("Base Price:", self.spin_price),
-            ("Departure Date:", self.date_edit),
-            ("Destination:", self.txt_destination),
-            ("Duration:", self.spin_duration),
-            ("Comfort Level:", self.cmb_comfort),
-            ("Available Cabins:", self.spin_cabins)
+            ("Имя:", self.txt_tour_name),
+            ("Описание:", self.txt_tour_desc),
+            ("Базовая цена:", self.spin_price),
+            ("Дата отбытия:", self.date_edit),
+            ("Место назназчения:", self.txt_destination),
+            ("Длительность:", self.spin_duration),
+            ("Уровень комфорта:", self.cmb_comfort),
+            ("Доступные каюты:", self.spin_cabins)
         ]
 
         for label, widget in inputs:
@@ -420,11 +421,11 @@ class Dashboard(QWidget):
         self.tours_manage_table.horizontalHeader().setDefaultSectionSize(100)
         self.tours_manage_table.setColumnCount(8)
         self.tours_manage_table.setHorizontalHeaderLabels(
-            ['ID', 'Name', 'Price', 'Departure', 'Destination', 'Cabins', 'Comfort', 'Actions']
+            ['ID', 'Имя', 'Цена', 'Отбытие', 'Место назначения', 'Каюты', 'Уровень комфорта', 'Действия']
         )
         self.load_manage_tours_data()
 
-        layout.addWidget(QLabel("Manage Tours:"))
+        layout.addWidget(QLabel("Организация туров:"))
         layout.addWidget(form)
         layout.addWidget(self.tours_manage_table)
         tab.setLayout(layout)
@@ -477,7 +478,7 @@ class Dashboard(QWidget):
         self.users_table.horizontalHeader().setDefaultSectionSize(100)
         self.users_table.setColumnCount(5)
         self.users_table.setHorizontalHeaderLabels(
-            ['ID', 'Username', 'Role', 'Email', 'Actions']
+            ['ID', 'Имя пользователя', 'Роль', 'Email', 'Действия']
         )
         self.load_users_data()
 
@@ -612,14 +613,14 @@ class Dashboard(QWidget):
         with db_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('''
-            SELECT s.id, t.name, s.discount_percent, s.start_date, s.end_date, t.base_price
+            SELECT s.id, t.name, s.discount_percent, s.start_date, s.end_date, t.base_price, t.id
             FROM special_offers s
             JOIN tours t ON s.tour_id = t.id
             ''')
             offers = cursor.fetchall()
         
             self.offers_table.setRowCount(len(offers))
-            for row_idx, (offer_id, name, discount, start, end, price) in enumerate(offers):
+            for row_idx, (offer_id, name, discount, start, end, price, tour_id) in enumerate(offers):
                 self.offers_table.setItem(row_idx, 0, QTableWidgetItem(name))
                 self.offers_table.setItem(row_idx, 1, QTableWidgetItem(f"{discount}%"))
                 self.offers_table.setItem(row_idx, 2, QTableWidgetItem(start))
@@ -740,7 +741,7 @@ class Dashboard(QWidget):
         #Находим имя тура
         with db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute('SELECT name FROM tours WHERE id = ?', (self.selected_tour_id,))
+            cursor.execute('SELECT name FROM tours WHERE id = (SELECT tour_id FROM special_offers WHERE id = ?)', (self.selected_tour_id,))
             tour_name = cursor.fetchone()[0]
     
         #Рассчитываем финальную цену
